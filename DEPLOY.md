@@ -211,7 +211,10 @@ for k, v in dotenv_values(Path(".env")).items():
     if v is not None: os.environ[k] = v
 
 iam = boto3.client("iam", region_name="us-east-1")
-acct = os.environ["AWS_ACCOUNT_ID"]
+# Resolve account from env or STS (matches runtime_deploy.py — keeps the
+# snippet account-agnostic and works whether or not AWS_ACCOUNT_ID is in .env).
+acct = os.environ.get("AWS_ACCOUNT_ID", "").strip() or \
+       boto3.client("sts", region_name="us-east-1").get_caller_identity()["Account"]
 
 trust = {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"bedrock-agentcore.amazonaws.com"},"Action":"sts:AssumeRole"}]}
 perms = {
