@@ -3,3 +3,8 @@ include = [".", "tests"]
 extraPaths = ["."]
 venvPath = "."
 reportMissingImports = "warning"
+
+[tool.pytest.ini_options]
+markers = [
+    "live: hits the deployed AgentCore Runtime / gateway — requires AWS creds",
+]
