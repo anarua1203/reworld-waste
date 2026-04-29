@@ -393,7 +393,7 @@ def _render_single_email(email_body: str) -> None:
 
 
 # ─── MCP tool result renderer (gateway catalog tab) ──────────────────────────
-def render_mcp_result(_tool_short: str, payload: dict) -> None:
+def render_mcp_result(payload: dict) -> None:
     """Pretty-print gateway tool results. Falls back to JSON view."""
     if "_error" in payload:
         st.error(f"Tool error: {payload['_error']}")
@@ -638,23 +638,25 @@ with tab_compose:
                 trigger_label = f"{full_name} @ {organization_name}"
 
         if trigger_args is not None:
-            result: dict | None = None
-            elapsed: float = 0.0
+            runtime_result: dict | None = None
+            runtime_elapsed: float = 0.0
             with st.spinner(f"Invoking AgentCore Runtime… (typically 5-12s)"):
                 try:
-                    result, elapsed = invoke_runtime(trigger_args)
-                    st.session_state.compose_history.insert(0, (trigger_label, result, elapsed))
+                    runtime_result, runtime_elapsed = invoke_runtime(trigger_args)
+                    st.session_state.compose_history.insert(
+                        0, (trigger_label, runtime_result, runtime_elapsed)
+                    )
                 except RuntimeError as exc:
                     st.error(str(exc))
 
-            if result is not None:
-                render_email_panel(result, elapsed)
+            if runtime_result is not None:
+                render_email_panel(runtime_result, runtime_elapsed)
 
         elif st.session_state.compose_history:
             # Show most recent result on page refresh / tab switch
-            label, result, elapsed = st.session_state.compose_history[0]
-            st.caption(f"Most recent: **{label}**")
-            render_email_panel(result, elapsed)
+            hist_label, hist_result, hist_elapsed = st.session_state.compose_history[0]
+            st.caption(f"Most recent: **{hist_label}**")
+            render_email_panel(hist_result, hist_elapsed)
 
         else:
             st.info("Pick a lead from the sidebar or fill in the form to compose an email.")
@@ -734,7 +736,7 @@ with tab_catalog:
                 with st.spinner(f"Calling {pick}…"):
                     try:
                         mcp_result = call_mcp_tool(chosen["name"], args)
-                        render_mcp_result(pick, mcp_result)
+                        render_mcp_result(mcp_result)
                     except Exception as exc:
                         st.error(f"Call failed: {exc}")
 
