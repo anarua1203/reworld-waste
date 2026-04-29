@@ -1,0 +1,632 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "PhantomBuster API v2",
+    "description": "PhantomBuster REST API — launch, monitor, and retrieve output from PhantomBuster agent automations (Phantoms and Flows). Used by the Reworld Waste Contact-Resolution agent to trigger LinkedIn enrichment Phantoms, poll run status, and extract structured lead data from container results.",
+    "version": "2.0.0",
+    "contact": {
+      "name": "PhantomBuster API Reference",
+      "url": "https://hub.phantombuster.com/reference/overview"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.phantombuster.com/api/v2",
+      "description": "PhantomBuster REST API v2 production"
+    }
+  ],
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Phantombuster-Key",
+        "description": "PhantomBuster workspace API key. Obtain from https://phantombuster.com/<workspace-id>/workspace-settings#api-keys."
+      }
+    },
+    "schemas": {
+      "AgentMeta": {
+        "type": "object",
+        "description": "Metadata record for a single PhantomBuster agent (Phantom or Flow).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique agent identifier."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name of the agent."
+          },
+          "scriptId": {
+            "type": "string",
+            "description": "ID of the underlying PhantomBuster script template."
+          },
+          "status": {
+            "type": "string",
+            "description": "Current agent status: 'running', 'idle', 'error', etc."
+          },
+          "lastEndMessage": {
+            "type": "string",
+            "description": "Last terminal status message from the agent's most recent run."
+          },
+          "nbLaunches": {
+            "type": "integer",
+            "description": "Total number of times this agent has been launched."
+          },
+          "nbContainers": {
+            "type": "integer",
+            "description": "Number of containers (run records) stored for this agent."
+          },
+          "argument": {
+            "type": "string",
+            "description": "JSON-stringified argument object the agent will use on next launch."
+          },
+          "userAwsFolder": {
+            "type": "string",
+            "description": "S3 folder prefix where this agent's output files are stored."
+          }
+        }
+      },
+      "AgentList": {
+        "type": "object",
+        "properties": {
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentMeta"
+            },
+            "description": "Array of agent metadata records."
+          }
+        }
+      },
+      "LaunchResponse": {
+        "type": "object",
+        "description": "Response returned when an agent is launched successfully.",
+        "properties": {
+          "containerId": {
+            "type": "string",
+            "description": "ID of the container (run record) created for this launch. Use this to poll output or fetch results."
+          },
+          "status": {
+            "type": "string",
+            "description": "Launch status, typically 'launch-queue'."
+          }
+        }
+      },
+      "OutputResponse": {
+        "type": "object",
+        "description": "Live or historical console output from an agent run.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Current container status: 'running', 'finished', 'error', 'launch-queue'."
+          },
+          "output": {
+            "type": "string",
+            "description": "Raw console log text emitted by the agent during this run."
+          },
+          "containerId": {
+            "type": "string",
+            "description": "Container ID this output belongs to."
+          }
+        }
+      },
+      "ContainerMeta": {
+        "type": "object",
+        "description": "Metadata for a single container (agent run record).",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique container identifier."
+          },
+          "agentId": {
+            "type": "string",
+            "description": "ID of the agent that produced this container."
+          },
+          "status": {
+            "type": "string",
+            "description": "Final status of this container run: 'finished', 'error', 'running', 'launch-queue'."
+          },
+          "startTime": {
+            "type": "integer",
+            "description": "Unix timestamp (ms) when the container started."
+          },
+          "endTime": {
+            "type": "integer",
+            "description": "Unix timestamp (ms) when the container finished. Null if still running."
+          },
+          "exitCode": {
+            "type": "integer",
+            "description": "Process exit code. 0 = success."
+          },
+          "resultObject": {
+            "type": "string",
+            "description": "URL to the JSON result file stored in S3, or null if not yet available."
+          },
+          "output": {
+            "type": "string",
+            "description": "Full console output for this container run."
+          }
+        }
+      },
+      "ContainerList": {
+        "type": "object",
+        "properties": {
+          "containers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContainerMeta"
+            },
+            "description": "Array of container metadata records for the requested agent."
+          }
+        }
+      },
+      "OrgInfo": {
+        "type": "object",
+        "description": "Workspace/organisation metadata.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Organisation/workspace identifier."
+          },
+          "name": {
+            "type": "string",
+            "description": "Workspace display name."
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL slug for the workspace."
+          },
+          "agentCount": {
+            "type": "integer",
+            "description": "Total number of agents in this workspace."
+          }
+        }
+      },
+      "SaveAgentResponse": {
+        "type": "object",
+        "description": "Response after saving updated agent arguments.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Agent ID that was updated."
+          },
+          "argument": {
+            "type": "string",
+            "description": "The new JSON-stringified argument that was saved."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message."
+          },
+          "status": {
+            "type": "integer",
+            "description": "HTTP status code."
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/agents/fetch": {
+      "get": {
+        "operationId": "fetchAgent",
+        "summary": "Fetch a single agent's metadata",
+        "description": "Retrieve metadata (name, status, argument, last run outcome, S3 result folder) for one PhantomBuster agent by its ID. Call this before launching to confirm the agent is idle and to read its current argument configuration. Also useful to check `lastEndMessage` to determine if the previous run succeeded or errored.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "Unique identifier of the agent to fetch. Obtain agent IDs from fetchAllAgents.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent metadata retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentMeta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent not found.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/agents/fetch-all": {
+      "get": {
+        "operationId": "fetchAllAgents",
+        "summary": "List all agents in the workspace",
+        "description": "Returns metadata for every PhantomBuster agent (Phantom or Flow) in the authenticated workspace. Use this to discover the correct agent ID for a LinkedIn enrichment Phantom (e.g., 'LinkedIn Profile Scraper', 'LinkedIn Company Scraper') before calling fetchAgent or launchAgent. Inspect the `name` field to identify the right agent.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of agents returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/agents/launch": {
+      "post": {
+        "operationId": "launchAgent",
+        "summary": "Launch an agent",
+        "description": "Launch a PhantomBuster agent immediately. Returns a `containerId` that can be used with fetchAgentOutput or fetchContainerOutput to poll progress and retrieve structured results. To scrape a LinkedIn profile or company page for the Contact-Resolution agent, pass the target LinkedIn URL(s) in the `argument` field as a JSON-stringified object. The agent must be idle (not already running) before launch.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "ID of the agent to launch."
+                  },
+                  "argument": {
+                    "type": "string",
+                    "description": "Optional JSON-stringified object overriding the agent's stored argument for this launch only. Example: '{\"profileUrls\": [\"https://www.linkedin.com/in/johndoe/\"]}'. If omitted, the agent uses its saved argument."
+                  },
+                  "bonusArgument": {
+                    "type": "string",
+                    "description": "Optional JSON-stringified object that is merged with the saved argument. Useful for passing per-run inputs (e.g. a list of LinkedIn URLs) without overwriting the agent's persistent config."
+                  },
+                  "output": {
+                    "type": "string",
+                    "description": "Optional: 'first-result-object' to make launch block until the first result is available. Omit for async launch (recommended for long-running Phantoms).",
+                    "enum": ["first-result-object"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent launched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaunchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request — agent already running or invalid argument.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent not found.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/agents/fetch-output": {
+      "get": {
+        "operationId": "fetchAgentOutput",
+        "summary": "Fetch live console output for a running agent",
+        "description": "Retrieve the current console log output for the most recent or a specific container run of an agent. Use this to poll progress while an agent is running (status will be 'running') and to detect completion (status becomes 'finished' or 'error'). Poll every 5–10 seconds; stop when `status` is no longer 'running' or 'launch-queue'.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "Agent ID whose current output to fetch.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "containerId",
+            "in": "query",
+            "required": false,
+            "description": "Optional container ID to fetch output for a specific past run. Omit to get the most recent run's output.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent output retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutputResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent or container not found.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/containers/fetch-output": {
+      "get": {
+        "operationId": "fetchContainerOutput",
+        "summary": "Fetch full output and results for a container",
+        "description": "Retrieve the complete run record for a specific container (agent run), including console output, exit code, start/end timestamps, and a URL to the structured JSON result file. Call this after polling fetchAgentOutput confirms the run has finished (status='finished') to get the `resultObject` URL where extracted LinkedIn profile or company data is stored. The result JSON is the primary data payload for the Contact-Resolution agent.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "Container ID to fetch. Obtained from the `containerId` field in the launchAgent response or from listContainers.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container output retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerMeta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Container not found.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/containers/fetch-all": {
+      "get": {
+        "operationId": "listContainers",
+        "summary": "List recent containers for an agent",
+        "description": "Returns a list of recent container (run) records for a given agent, ordered newest-first. Use this to browse historical runs, find a specific container ID for a past scrape, or check the outcome of recent launches without polling. Each container record includes status, timestamps, exit code, and the result-object URL.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "Agent ID whose containers to list.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of container records to return (default 10, max 100).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Container list returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent not found.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/agents/save": {
+      "post": {
+        "operationId": "saveAgentArgument",
+        "summary": "Update an agent's saved argument",
+        "description": "Persist a new argument configuration for an agent. Use this to update the stored LinkedIn URL list, session cookie, or other Phantom-specific settings before launching. The argument must be a JSON-stringified object matching the schema the target Phantom expects. After saving, the next launch (with no `argument` override) will use this new configuration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Agent ID to update."
+                  },
+                  "argument": {
+                    "type": "string",
+                    "description": "New JSON-stringified argument object to save as the agent's default configuration. Example for LinkedIn Profile Scraper: '{\"sessionCookie\": \"<li_at value>\", \"profileUrls\": [\"https://www.linkedin.com/in/target-person/\"], \"numberOfProfiles\": 1}'."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Optional new display name for the agent."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent argument saved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveAgentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid argument format.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent not found.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    },
+    "/orgs/fetch": {
+      "get": {
+        "operationId": "fetchOrgInfo",
+        "summary": "Fetch workspace/organisation info",
+        "description": "Retrieve metadata about the authenticated workspace/organisation, including its ID, name, and agent count. Useful as a connectivity check to verify the API key is valid and to confirm which workspace the key belongs to before making agent operations.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Organisation info returned successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid X-Phantombuster-Key header.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        },
+        "security": [{ "ApiKeyAuth": [] }]
+      }
+    }
+  }
+}

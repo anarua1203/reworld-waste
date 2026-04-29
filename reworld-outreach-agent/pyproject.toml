@@ -1,0 +1,5 @@
+[tool.pyright]
+include = [".", "tests"]
+extraPaths = ["."]
+venvPath = "."
+reportMissingImports = "warning"

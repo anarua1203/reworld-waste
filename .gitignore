@@ -1,0 +1,43 @@
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# Never commit real environment files. .env.example is the only env file
+# that ships in this repo.
+.env
+.env.*
+!.env.example
+credentials.env
+*.pem
+*.key
+
+# Setup state with provisioned resource names
+.setup-state.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Build / runtime artifacts ────────────────────────────────────────────────
+*.log
+.docker/
