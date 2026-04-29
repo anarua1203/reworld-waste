@@ -69,6 +69,20 @@ ENV = {
     },
 }
 
+# Push the AWS credentials from .env into os.environ so boto3's default
+# credential chain finds them BEFORE ~/.aws/credentials. Without this, a
+# stale [default] profile in ~/.aws/credentials wins and AWS rejects the
+# call with "The security token included in the request is invalid".
+for _k in (
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
+):
+    if ENV.get(_k):
+        os.environ[_k] = ENV[_k]
+
 
 def _required(key: str, missing_hint: str = "") -> str:
     v = ENV.get(key, "").strip()
