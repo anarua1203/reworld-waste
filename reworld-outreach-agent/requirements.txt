@@ -13,3 +13,7 @@ python-dotenv>=1.0.0,<2.0
 
 # Runtime server (for entrypoint.py local mode + container)
 uvicorn[standard]>=0.29.0,<1.0
+
+# Local developer GUI — NOT part of the AgentCore Runtime container image.
+# The Dockerfile installs only the lines above; these extras are for local use.
+streamlit>=1.32.0,<2.0

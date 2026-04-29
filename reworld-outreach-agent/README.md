@@ -46,6 +46,20 @@ cp .env.example .env
 chmod 600 .env
 ```
 
+## Local GUI
+
+A Streamlit web app is included at `streamlit_app.py`. It provides:
+- **Outreach composer** tab: click a sidebar preset or fill in the four lead fields and invoke the deployed AgentCore Runtime directly.
+- **Gateway tool catalog** tab: browse and invoke the 8 MCP tools exposed by the PhantomBuster Gateway.
+- **Find leads (Path B)** tab: run PhantomBuster enrichment (credit-gated, requires `PHANTOMBUSTER_API_KEY` and `PHANTOM_AGENT_ID`).
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+The app reads `AGENT_RUNTIME_ARN` (plus the existing gateway env vars) from `.env`. Make sure `.env` is populated before starting.
+
 ## Local run
 
 ```bash
