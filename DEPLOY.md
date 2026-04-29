@@ -235,39 +235,19 @@ When successful, prints the runtime ARN, ID (e.g. `reworld_outreach_agent-XXXXXX
 
 Wait until `READY`:
 ```bash
-python3 -c "
-import time, boto3
-from dotenv import dotenv_values
-import os
-for k,v in dotenv_values('.env').items():
-    if v: os.environ[k]=v
-c = boto3.client('bedrock-agentcore-control', region_name='us-east-1')
-# Replace runtime_id with what create_agent_runtime returned
-runtime_id = '<paste-from-runtime-deploy-output>'
-for _ in range(30):
-    s = c.get_agent_runtime(agentRuntimeId=runtime_id)['status']
-    print(s)
-    if s in ('READY','CREATE_FAILED'): break
-    time.sleep(5)
-"
+python wait_for_runtime_ready.py
 ```
+The script polls `get_agent_runtime` every 5s, exits 0 on `READY` (printing the ARN you can paste into `.env` as `AGENT_RUNTIME_ARN`), exits 1 on `CREATE_FAILED` / `UPDATE_FAILED` / timeout. Defaults: `--timeout 300`, `--poll-every 5`, `--runtime-name reworld_outreach_agent`.
 
 ### 5.5 Invoke and verify
 ```bash
-python3 - <<'PY'
-import json, boto3, os
-from dotenv import dotenv_values
-for k,v in dotenv_values('.env').items():
-    if v: os.environ[k]=v
-data = boto3.client("bedrock-agentcore", region_name="us-east-1")
-resp = data.invoke_agent_runtime(
-    agentRuntimeArn="arn:aws:bedrock-agentcore:us-east-1:<account>:runtime/<runtime_id>",
-    payload=json.dumps({"full_name":"Tim K","organization_name":"Republic Services","state":"NJ","industryName":"Environmental Services"}).encode(),
-    contentType="application/json", accept="application/json",
-)
-print(resp["response"].read().decode())
-PY
+echo '{"full_name":"Tim K","organization_name":"Republic Services","state":"NJ","industryName":"Environmental Services"}' \
+    | python invoke_runtime.py --pretty
 ```
+The script reads JSON from stdin (matching `agent.py`'s interface — same payload pipes work), resolves the runtime ARN from `AGENT_RUNTIME_ARN` in `.env` (or by name via the control plane), and prints the runtime's response body to stdout.
+
+Flags: `--runtime-arn` (overrides env+name lookup), `--runtime-name`, `--region`, `--pretty`.
+
 Expect `{"email": "..."}` end-to-end, ~5-7s.
 
 ---
