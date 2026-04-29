@@ -247,10 +247,22 @@ def run_agent(payload: dict, *, enrich: bool = False) -> dict:
         # Suppress the streaming output to stderr; only JSON goes to stdout
         callback_handler=None,
     )
-    result = agent(user_message)
 
-    raw = str(result)
-    return _coerce_json(raw)
+    try:
+        result = agent(user_message)
+        raw = str(result)
+        return _coerce_json(raw)
+    finally:
+        # Explicitly stop the MCP client while the loop is still running.
+        # Strands' Agent.__del__ finalizer calls tool_registry.cleanup() during
+        # interpreter shutdown, which then tries to stop the MCP background
+        # thread/loop — but the loop is already torn down, producing the
+        # noisy "Cannot close a running event loop" stderr trace AFTER the
+        # JSON has been printed. Stopping explicitly here eliminates that.
+        try:
+            mcp.stop(None, None, None)
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
