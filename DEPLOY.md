@@ -241,9 +241,15 @@ PY
 python runtime_deploy.py --create-ecr
 ```
 
-What it does (~3-5 min total):
+What it does:
 1. Creates ECR repository `reworld-outreach-agent`.
-2. `docker buildx --platform linux/arm64 --load` builds the image (Graviton is required by AgentCore Runtime).
+2. `docker buildx --platform linux/arm64 --load` builds the image. **AgentCore Runtime today accepts only linux/arm64.** Build time:
+   - Apple Silicon dev box: native, ~30s.
+   - Windows / Linux-x86 dev box: QEMU emulation, ~3-5 min. **One-time setup** (registers QEMU binfmt handlers in Docker Desktop's Linux VM):
+     ```bash
+     docker run --privileged --rm tonistiigi/binfmt --install all
+     ```
+     After that, every subsequent `docker buildx build --platform linux/arm64 ...` works without changes.
 3. Pulls an ECR auth token via boto3 (no `aws` CLI dependency) and `docker login`s.
 4. Pushes `:latest`.
 5. Calls `bedrock-agentcore-control.create_agent_runtime` with the right shape (`roleArn`, `networkConfiguration`, `protocolConfiguration={serverProtocol:"HTTP"}`, and `environmentVariables` are all top-level — not nested under `containerConfiguration`).

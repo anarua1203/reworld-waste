@@ -1,10 +1,15 @@
 # ── Reworld Outreach Agent — AgentCore Runtime container ────────────────────
 #
-# Multi-arch build (ARM64 for Graviton / Apple Silicon dev boxes):
-#   docker buildx build --platform linux/arm64 -t reworld-outreach-agent:latest .
+# AgentCore Runtime today accepts ONLY linux/arm64 (Graviton) images.
 #
-# Standard x86-64 build:
-#   docker build -t reworld-outreach-agent:latest .
+# Apple Silicon dev box → native, fast (~30s):
+#   docker buildx build --platform linux/arm64 --load -t reworld-outreach-agent:latest .
+#
+# Windows / Linux-x86 dev box → QEMU emulation (~3-5 min). One-time setup:
+#   docker run --privileged --rm tonistiigi/binfmt --install all
+# Then the same buildx command above works.
+#
+# runtime_deploy.py reads BUILD_PLATFORM from env (defaults to linux/arm64).
 #
 # The CLIENT_SECRET must NOT be baked in — pass it at runtime:
 #   docker run -e CLIENT_SECRET=<secret> \

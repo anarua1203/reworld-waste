@@ -140,7 +140,15 @@ python runtime_deploy.py --dry-run
 python runtime_deploy.py
 ```
 
-This builds the Docker image, pushes it to ECR, and calls `bedrock-agentcore-control.create_agent_runtime`.
+This builds the Docker image (linux/arm64 — required by AgentCore Runtime), pushes it to ECR, and calls `bedrock-agentcore-control.create_agent_runtime`.
+
+**Windows / Linux-x86 dev boxes:** AgentCore Runtime today accepts only `linux/arm64` images, so cross-arch building via QEMU is required. One-time setup before the first build:
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install all
+```
+
+This registers QEMU binfmt handlers inside Docker Desktop's Linux VM. After it runs once, `runtime_deploy.py` works without further changes — expect ~3-5 min build time vs ~30s on a native Apple Silicon / Graviton dev box.
 
 ### Step 5 — Invoke the Runtime
 

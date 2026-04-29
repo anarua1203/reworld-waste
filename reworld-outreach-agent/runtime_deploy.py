@@ -161,12 +161,16 @@ def ecr_login(dry_run: bool) -> None:
 
 def build_and_push(dry_run: bool) -> None:
     project_dir = str(Path(__file__).parent)
-    # AgentCore Runtime requires linux/arm64 (Graviton). buildx with --load
-    # produces a single-arch image we can tag and push normally.
-    print("\n--- Build Docker image (linux/arm64) ---")
+    # AgentCore Runtime today accepts ONLY linux/arm64 (Graviton).
+    # Apple Silicon  → native, fast (~30s).
+    # Windows / Linux-x86  → requires QEMU emulation (~3-5 min). One-time setup:
+    #     docker run --privileged --rm tonistiigi/binfmt --install all
+    # See README "Windows / Linux-x86 setup" for details.
+    platform = os.environ.get("BUILD_PLATFORM", "linux/arm64")
+    print(f"\n--- Build Docker image ({platform}) ---")
     run([
         "docker", "buildx", "build",
-        "--platform", "linux/arm64",
+        "--platform", platform,
         "--load",
         "-t", f"{ECR_REPO_NAME}:latest",
         project_dir,
