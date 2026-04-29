@@ -14,14 +14,22 @@ reworld-waste/
 │   ├── test_gateway.py                       direct + gateway end-to-end tests
 │   ├── openapi-specs/phantombuster-v2.json   OpenAPI spec → 8 MCP operations
 │   └── README.md
-└── reworld-outreach-agent/        ← Strands agent → BedrockModel → MCPClient → Gateway
-    ├── agent.py                              BedrockModel + MCPClient + render_email_tool
-    ├── mcp_auth.py                           Cognito client_credentials + cached transport
-    ├── templates.py                          Verbatim email template (no LLM rewrites)
-    ├── entrypoint.py                         BedrockAgentCoreApp /invocations handler
-    ├── runtime_deploy.py                     ECR build/push + create_agent_runtime
-    ├── Dockerfile                            python:3.12-slim, port 8080, linux/arm64
-    ├── tests/test_agent_local.py             16 tests (13 unit + 3 live)
+├── reworld-outreach-agent/        ← Strands agent → BedrockModel → MCPClient → Gateway
+│   ├── agent.py                              BedrockModel + MCPClient + render_email_tool
+│   ├── mcp_auth.py                           Cognito client_credentials + cached transport
+│   ├── templates.py                          Verbatim email template (no LLM rewrites)
+│   ├── entrypoint.py                         BedrockAgentCoreApp /invocations handler
+│   ├── runtime_deploy.py                     ECR build/push + create_agent_runtime
+│   ├── Dockerfile                            python:3.12-slim, port 8080, linux/arm64
+│   ├── tests/test_agent_local.py             16 tests (13 unit + 3 live)
+│   └── README.md
+└── reworldSalesAgentMcp/          ← agentcore-CLI scaffold: FastMCP server + Strands MCP client
+    ├── src/mcp_client/main.py                FastMCP server exposing get_average_industry_revenue
+    ├── src/mcp_client/client.py              Strands MCPClient against an example MCP endpoint
+    ├── src/mcp_client/tools.py               Mock industry-revenue dataset (Snowflake stand-in)
+    ├── src/model/load.py                     BedrockModel loader (Claude Sonnet 4.5 global profile)
+    ├── .bedrock_agentcore.yaml               agentcore CLI deploy config
+    ├── pyproject.toml + uv.lock              uv-managed deps
     └── README.md
 ```
 
