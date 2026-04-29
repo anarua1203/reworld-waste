@@ -201,42 +201,16 @@ Expect strict JSON `{"email": "..."}` — agent → Bedrock → Cognito → Gate
 ### 5.3 Create the runtime IAM role
 The runtime container assumes this role to call Bedrock and read Secrets Manager.
 
+Run the helper script (idempotent — re-runs reuse the role and refresh the inline policy):
+
 ```bash
-python3 - <<'PY'
-import json, time, boto3
-from pathlib import Path
-from dotenv import dotenv_values
-import os
-for k, v in dotenv_values(Path(".env")).items():
-    if v is not None: os.environ[k] = v
-
-iam = boto3.client("iam", region_name="us-east-1")
-# Resolve account from env or STS (matches runtime_deploy.py — keeps the
-# snippet account-agnostic and works whether or not AWS_ACCOUNT_ID is in .env).
-acct = os.environ.get("AWS_ACCOUNT_ID", "").strip() or \
-       boto3.client("sts", region_name="us-east-1").get_caller_identity()["Account"]
-
-trust = {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"bedrock-agentcore.amazonaws.com"},"Action":"sts:AssumeRole"}]}
-perms = {
-  "Version":"2012-10-17",
-  "Statement":[
-    {"Effect":"Allow","Action":["bedrock:InvokeModel","bedrock:InvokeModelWithResponseStream","bedrock:GetInferenceProfile","bedrock:GetFoundationModel"],
-     "Resource":["arn:aws:bedrock:*::foundation-model/*", f"arn:aws:bedrock:*:{acct}:inference-profile/*", f"arn:aws:bedrock:*:{acct}:application-inference-profile/*"]},
-    {"Effect":"Allow","Action":["secretsmanager:GetSecretValue"],"Resource":f"arn:aws:secretsmanager:us-east-1:{acct}:secret:reworld/outreach-agent/*"},
-    {"Effect":"Allow","Action":["ecr:GetDownloadUrlForLayer","ecr:BatchGetImage","ecr:GetAuthorizationToken"],"Resource":"*"},
-    {"Effect":"Allow","Action":["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents","logs:DescribeLogStreams"],"Resource":"*"},
-    {"Effect":"Allow","Action":["bedrock-agentcore:GetWorkloadAccessToken*"],"Resource":"*"},
-  ]
-}
-
-try:
-    iam.create_role(RoleName="reworld-outreach-agent-runtime", AssumeRolePolicyDocument=json.dumps(trust))
-except iam.exceptions.EntityAlreadyExistsException:
-    pass
-iam.put_role_policy(RoleName="reworld-outreach-agent-runtime", PolicyName="agent-runtime-permissions", PolicyDocument=json.dumps(perms))
-print("✓ role ready"); time.sleep(8)
-PY
+cd reworld-outreach-agent
+python create_runtime_role.py
 ```
+
+The script resolves the active AWS account via STS (no `AWS_ACCOUNT_ID` required in `.env`), creates `reworld-outreach-agent-runtime` if it doesn't exist, attaches the inline `agent-runtime-permissions` policy, and waits 8s for IAM propagation.
+
+A `--dry-run` flag prints the full policy JSON without applying it; `--region` and `--role-name` overrides are also available.
 
 ### 5.4 Build, push, and register the runtime
 
